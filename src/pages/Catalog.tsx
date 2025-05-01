@@ -15,6 +15,15 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 const Catalog = () => {
   const [filteredCars, setFilteredCars] = useState<Car[]>(cars);
@@ -23,6 +32,8 @@ const Catalog = () => {
   const [selectedBrand, setSelectedBrand] = useState<string>("all");
   const [priceRange, setPriceRange] = useState([0, 300000000]); // 0 to 30 crore
   const [sortBy, setSortBy] = useState<string>("default");
+  const [currentPage, setCurrentPage] = useState(1);
+  const carsPerPage = 9;
 
   // Get unique brands and categories
   const brands = Array.from(new Set(cars.map((car) => car.brand)));
@@ -71,6 +82,7 @@ const Catalog = () => {
     }
 
     setFilteredCars(result);
+    setCurrentPage(1); // Reset to first page when filters change
   }, [searchQuery, selectedCategory, selectedBrand, priceRange, sortBy]);
 
   const resetFilters = () => {
@@ -89,6 +101,49 @@ const Catalog = () => {
     });
     return formatter.format(price);
   };
+
+  // Calculate pagination
+  const indexOfLastCar = currentPage * carsPerPage;
+  const indexOfFirstCar = indexOfLastCar - carsPerPage;
+  const currentCars = filteredCars.slice(indexOfFirstCar, indexOfLastCar);
+  const totalPages = Math.ceil(filteredCars.length / carsPerPage);
+
+  // Generate page numbers for pagination
+  const pageNumbers = [];
+  const maxPagesToShow = 5;
+  
+  if (totalPages <= maxPagesToShow) {
+    // Show all pages if there are only a few
+    for (let i = 1; i <= totalPages; i++) {
+      pageNumbers.push(i);
+    }
+  } else {
+    // Complex pagination logic
+    if (currentPage <= 3) {
+      // Near the start
+      for (let i = 1; i <= 4; i++) {
+        pageNumbers.push(i);
+      }
+      pageNumbers.push("ellipsis");
+      pageNumbers.push(totalPages);
+    } else if (currentPage >= totalPages - 2) {
+      // Near the end
+      pageNumbers.push(1);
+      pageNumbers.push("ellipsis");
+      for (let i = totalPages - 3; i <= totalPages; i++) {
+        pageNumbers.push(i);
+      }
+    } else {
+      // Middle
+      pageNumbers.push(1);
+      pageNumbers.push("ellipsis");
+      pageNumbers.push(currentPage - 1);
+      pageNumbers.push(currentPage);
+      pageNumbers.push(currentPage + 1);
+      pageNumbers.push("ellipsis");
+      pageNumbers.push(totalPages);
+    }
+  }
 
   return (
     <>
@@ -219,11 +274,49 @@ const Catalog = () => {
                 <Button onClick={resetFilters}>Reset All Filters</Button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredCars.map((car) => (
-                  <CarCard key={car.id} car={car} />
-                ))}
-              </div>
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {currentCars.map((car) => (
+                    <CarCard key={car.id} car={car} />
+                  ))}
+                </div>
+
+                {/* Pagination */}
+                {filteredCars.length > carsPerPage && (
+                  <Pagination className="mt-8">
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious 
+                          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                          className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                        />
+                      </PaginationItem>
+                      
+                      {pageNumbers.map((number, idx) => (
+                        <PaginationItem key={idx}>
+                          {number === "ellipsis" ? (
+                            <PaginationEllipsis />
+                          ) : (
+                            <PaginationLink
+                              isActive={currentPage === number}
+                              onClick={() => setCurrentPage(number as number)}
+                            >
+                              {number}
+                            </PaginationLink>
+                          )}
+                        </PaginationItem>
+                      ))}
+                      
+                      <PaginationItem>
+                        <PaginationNext 
+                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                          className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                )}
+              </>
             )}
           </div>
         </div>
